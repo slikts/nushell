@@ -10,7 +10,7 @@ use nu_protocol::{
     engine::{EngineState, Stack, StateWorkingSet},
     shell_error::generic::GenericError,
 };
-use std::{fmt::Display, path::Path};
+use std::path::{Path, PathBuf};
 use usage::{
     Spec,
     error::UsageErr,
@@ -35,11 +35,17 @@ pub fn bind(
 ) -> Result<Call, ShellError> {
     let cwd = engine_state.cwd(Some(stack))?;
     // A path nu can't resolve or read is reported when nu runs the script.
-    let Ok(script) = nu_path::absolute_with(script, cwd.as_std_path()) else {
+    let Ok(path) = nu_path::absolute_with(script, cwd.as_std_path()) else {
         return Ok(Call::Run);
     };
-    let Some(spec) = spec(&script)? else {
-        return Ok(Call::Run);
+    let spec = match spec(&path) {
+        Ok(Some(spec)) => spec,
+        Ok(None) => return Ok(Call::Run),
+        Err((file, error)) => {
+            let title = format!("Invalid usage spec in {}", file.display());
+            let diagnostic = format!("{:?}", usage::miette::Error::from(error));
+            return Err(call_error(engine_state, script, &[], title, diagnostic));
+        }
     };
 
     let mut words = vec![spec.bin.clone()];
@@ -47,21 +53,24 @@ pub fn bind(
     let parsed = match usage::parse::parse(&spec, &words) {
         Ok(parsed) => parsed,
         Err(refusal) => {
-            return match requested_page(&spec, &words) {
-                Some(page) => Ok(Call::Answer(page)),
-                None => Err(refused(&spec, refusal)),
-            };
+            if let Some(page) = requested_page(&spec, &words) {
+                return Ok(Call::Answer(page));
+            }
+            let title = format!("{} can't be called this way", spec.bin);
+            return Err(call_error(
+                engine_state,
+                script,
+                args,
+                title,
+                refusal.to_string(),
+            ));
         }
     };
 
     let value = binding(&parsed);
     let mut working_set = StateWorkingSet::new(engine_state);
-    let usage = working_set.add_variable(
-        b"$usage".to_vec(),
-        Span::unknown(),
-        value.get_type(),
-        false,
-    );
+    let usage =
+        working_set.add_variable(b"$usage".to_vec(), Span::unknown(), value.get_type(), false);
     working_set.set_variable_const_val(usage, value);
     engine_state.merge_delta(working_set.render())?;
     Ok(Call::Run)
@@ -69,15 +78,15 @@ pub fn bind(
 
 /// The spec `script` runs with, found the way `usage exec` finds it: a `.<script>.usage.kdl`
 /// file beside the script, else the script's own `USAGE` comments. `None` when it has neither,
-/// or can't be read.
-fn spec(script: &Path) -> Result<Option<Spec>, ShellError> {
+/// or can't be read; the file usage couldn't read a spec from, with why, when it has one.
+fn spec(script: &Path) -> Result<Option<Spec>, (PathBuf, UsageErr)> {
     let Some(name) = script.file_name().and_then(|name| name.to_str()) else {
         return Ok(None);
     };
     let sidecar_name = format!(".{name}.usage.kdl");
     let sidecar = script.with_file_name(&sidecar_name);
     if sidecar.exists() {
-        let mut spec = Spec::parse_file(&sidecar).map_err(|error| invalid(&sidecar, error))?;
+        let mut spec = Spec::parse_file(&sidecar).map_err(|error| (sidecar.clone(), error))?;
         // usage names a spec after the file it is in, and the program a sidecar describes is
         // the script, so it takes the script's name unless the sidecar gives one.
         if spec.name == sidecar_name {
@@ -97,7 +106,7 @@ fn spec(script: &Path) -> Result<Option<Spec>, ShellError> {
     }
     Spec::parse_script(script)
         .map(Some)
-        .map_err(|error| invalid(script, error))
+        .map_err(|error| (script.to_path_buf(), error))
 }
 
 /// Whether `line` is a spec comment in a Nu script, in usage's syntax: `#USAGE …`,
@@ -191,7 +200,10 @@ fn bound(value: &ParseValue) -> Value {
         ParseValue::Bool(value) => Value::bool(*value, span),
         ParseValue::String(value) => Value::string(value.clone(), span),
         ParseValue::MultiBool(values) => Value::list(
-            values.iter().map(|value| Value::bool(*value, span)).collect(),
+            values
+                .iter()
+                .map(|value| Value::bool(*value, span))
+                .collect(),
             span,
         ),
         ParseValue::MultiString(values) => Value::list(
@@ -204,22 +216,29 @@ fn bound(value: &ParseValue) -> Value {
     }
 }
 
-/// A call the script's spec doesn't accept, reported before the script runs.
-fn refused(spec: &Spec, refusal: impl Display) -> ShellError {
-    GenericError::new(
-        format!("{} can't be called this way", spec.bin),
-        refusal.to_string(),
-        Span::unknown(),
-    )
-    .into()
-}
-
-/// A spec usage can't read.
-fn invalid(file: &Path, error: UsageErr) -> ShellError {
-    GenericError::new(
-        format!("Invalid usage spec in {}", file.display()),
-        format!("{:?}", usage::miette::Error::from(error)),
-        Span::unknown(),
-    )
-    .into()
+/// An error about calling `script` with `args`, shown against the command line the way nu shows
+/// a script it can't find: labelled on the words after the script, or on the script itself when
+/// there are none.
+fn call_error(
+    engine_state: &mut EngineState,
+    script: &str,
+    args: &[String],
+    title: String,
+    message: String,
+) -> ShellError {
+    let words = args.join(" ");
+    let command_line = format!("nu {script} {words}");
+    let mut working_set = StateWorkingSet::new(engine_state);
+    let file = working_set.add_file("<commandline>", command_line.as_bytes());
+    let line = working_set.get_span_for_file(file);
+    let (start, end) = if words.is_empty() {
+        (3, 3 + script.len())
+    } else {
+        (command_line.len() - words.len(), command_line.len())
+    };
+    let span = line.subspan(start, end).unwrap_or(line);
+    if let Err(error) = engine_state.merge_delta(working_set.render()) {
+        return error;
+    }
+    GenericError::new(title, message, span).into()
 }
