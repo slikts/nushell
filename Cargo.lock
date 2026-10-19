@@ -4761,6 +4761,7 @@ dependencies = [
  "nu-table",
  "nu-test-support",
  "nu-tui",
+ "nu-usage",
  "nu-utils",
  "openssl",
  "pretty_assertions",
@@ -5546,6 +5547,15 @@ dependencies = [
  "serde",
  "typetag",
  "unicode-width 0.2.2",
+]
+
+[[package]]
+name = "nu-usage"
+version = "0.116.1"
+dependencies = [
+ "nu-path",
+ "nu-protocol",
+ "usage-lib",
 ]
 
 [[package]]
@@ -9192,6 +9202,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tera"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61e0cadeeb54426080b4c5395d59769ce8293f542cc25511c167c742b2175809"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9936,6 +9955,32 @@ name = "urlencoding"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "daf8dba3b7eb870caf1ddeed7bc9d2a049f3cfdfae7cb521b087cc33ae4c49da"
+
+[[package]]
+name = "usage-argv"
+version = "7.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "109c9b2a781d3293e82f7c2705769ecfe5c25d59ca70d9d879e6d06a5f3cd628"
+
+[[package]]
+name = "usage-lib"
+version = "7.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "644eec784c78285db1adc0fdca26403992d7240761ceabc99b5f85be23aef22d"
+dependencies = [
+ "indexmap 2.14.1",
+ "itertools 0.15.0",
+ "log",
+ "num-traits",
+ "regex",
+ "semver",
+ "serde",
+ "tera",
+ "thiserror 2.0.20",
+ "unicode-width 0.2.2",
+ "usage-argv",
+ "winnow 1.0.4",
+]
 
 [[package]]
 name = "utf-8"

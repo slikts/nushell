@@ -13,6 +13,7 @@ use nu_protocol::{
     report_shell_error,
 };
 use nu_utils::perf;
+use nu_utils::stdout_write_all_and_flush;
 use nu_utils::time::Instant;
 
 pub(crate) fn run_commands(
@@ -134,6 +135,7 @@ pub(crate) fn run_file(
         nu: parsed_nu_cli_args,
         script_name,
         args_to_script,
+        script_args,
     } = parsed_cli;
 
     // if the --no-config-file(-n) option is NOT passed, load the plugin file,
@@ -192,6 +194,19 @@ pub(crate) fn run_file(
         let mut config = engine_state.get_config().as_ref().clone();
         config.table.mode = mode;
         engine_state.set_config(config);
+    }
+
+    // A script with a usage spec has its call read against the spec before it runs.
+    match nu_usage::bind(engine_state, &stack, &script_name, &script_args) {
+        Ok(nu_usage::Call::Run) => {}
+        Ok(nu_usage::Call::Answer(page)) => {
+            let _ = stdout_write_all_and_flush(page);
+            std::process::exit(0);
+        }
+        Err(err) => {
+            report_shell_error(Some(&stack), engine_state, &err);
+            std::process::exit(err.exit_code().unwrap_or(1));
+        }
     }
 
     let start_time = Instant::now();

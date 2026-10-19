@@ -82,6 +82,7 @@ members = [
   "crates/nu-term-grid",
   "crates/nu-test-support",
   "crates/nu-test-support-macros",
+  "crates/nu-usage",
   "crates/nu-utils",
   "crates/nu-heavy-utils",
   "crates/nuon",
@@ -125,6 +126,7 @@ nu-term-grid = { path = "crates/nu-term-grid", version = "0.116.1", default-feat
 nu-tui = { path = "crates/nu-tui", version = "0.116.1", default-features = false }
 nu-test-support = { path = "crates/nu-test-support", version = "0.116.1", default-features = false }
 nu-test-support-macros = { path = "crates/nu-test-support-macros", version = "0.116.1", default-features = false }
+nu-usage = { path = "crates/nu-usage", version = "0.116.1", default-features = false }
 nu-utils = { path = "crates/nu-utils", version = "0.116.1", default-features = false }
 nu_plugin_custom_values = { path = "crates/nu_plugin_custom_values", version = "0.116.1", default-features = false }
 nu_plugin_example = { path = "crates/nu_plugin_example", version = "0.116.1", default-features = false }
@@ -283,6 +285,7 @@ unicode-segmentation = "1.13"
 unicode-width = "0.2"
 ureq = { version = "~3.4.0", default-features = false, features = ["socks-proxy"] }
 url = "2.5"
+usage-lib = { version = "7.0.2", default-features = false, features = ["cli-help"] }
 uu_cp = "0.12.0"
 uu_mkdir = "0.12.0"
 uu_mktemp = "0.12.0"
@@ -351,6 +354,7 @@ nu-plugin-engine = { workspace = true, features = ["local-socket"], optional = t
 nu-protocol = { workspace = true, features = ["os"] }
 nu-std = { workspace = true }
 nu-system = { workspace = true }
+nu-usage = { workspace = true }
 nu-utils = { workspace = true, features = ["os"] }
 reedline = { workspace = true, features = ["bashisms"] }
 

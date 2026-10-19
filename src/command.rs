@@ -55,6 +55,9 @@ pub(crate) struct ParsedCli {
     pub(crate) nu: NushellCliArgs,
     pub(crate) script_name: String,
     pub(crate) args_to_script: Vec<String>,
+    // The words after the script name as the process received them; `args_to_script` holds
+    // them escaped for nu's own parser.
+    pub(crate) script_args: Vec<String>,
 }
 
 // Categories for grouping CLI flags in help output.
@@ -532,6 +535,7 @@ pub(crate) fn parse_cli_args(args: Vec<OsString>) -> Result<ParsedCli, CliError>
     let mut cli = CliValues::default();
     let mut script_name = String::new();
     let mut args_to_script = Vec::new();
+    let mut script_args = Vec::new();
 
     if argv0.starts_with('-') {
         cli.login_shell = Some(spanned_true());
@@ -543,9 +547,9 @@ pub(crate) fn parse_cli_args(args: Vec<OsString>) -> Result<ParsedCli, CliError>
                 .raw_args()
                 .map_err(map_lexopt_error)?
                 .map(|arg| arg.to_string_lossy().to_string())
-                .map(|arg| escape_for_script_arg(&arg))
                 .collect::<Vec<_>>();
-            args_to_script.extend(rest);
+            args_to_script.extend(rest.iter().map(|arg| escape_for_script_arg(arg)));
+            script_args.extend(rest);
             Ok(())
         };
 
@@ -813,6 +817,7 @@ pub(crate) fn parse_cli_args(args: Vec<OsString>) -> Result<ParsedCli, CliError>
         },
         script_name,
         args_to_script,
+        script_args,
     })
 }
 

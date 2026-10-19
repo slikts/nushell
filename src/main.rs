@@ -147,6 +147,7 @@ fn main() -> Result<()> {
     let parsed_nu_cli_args = parsed.nu;
     let script_name = parsed.script_name;
     let args_to_script = parsed.args_to_script;
+    let script_args = parsed.script_args;
 
     experimental_options::load(&engine_state, &parsed_nu_cli_args, !script_name.is_empty());
 
@@ -681,6 +682,7 @@ fn main() -> Result<()> {
                 nu: parsed_nu_cli_args,
                 script_name,
                 args_to_script,
+                script_args,
             },
             use_color,
             &commands,
@@ -696,6 +698,7 @@ fn main() -> Result<()> {
                 nu: parsed_nu_cli_args,
                 script_name,
                 args_to_script,
+                script_args,
             },
             use_color,
             input,

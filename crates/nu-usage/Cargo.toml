@@ -1,0 +1,20 @@
+[package]
+authors.workspace = true
+description = "A script's usage spec and the call parsed against it, as $usage"
+repository = "https://github.com/slikts/nushell/tree/usage/crates/nu-usage"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+name = "nu-usage"
+version.workspace = true
+
+[lib]
+bench = false
+
+[dependencies]
+nu-path = { workspace = true }
+nu-protocol = { workspace = true }
+usage-lib = { workspace = true }
+
+[lints]
+workspace = true
